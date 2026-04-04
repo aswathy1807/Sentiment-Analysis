@@ -1,4 +1,6 @@
 import os
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning)
 # print("Current Working Directory:", os.getcwd())  # Debug: Remove or replace with logging in production
 # print("Files in this folder:", os.listdir())  # Debug: Remove or replace with logging in production
 
@@ -50,11 +52,24 @@ def get_stop_words():
 
 def clean_text(text):
     text = str(text).lower()
+
+    text = text.replace("did not", "not")
+    text = text.replace("didn't", "not")
+    text = text.replace("does not", "not")
+    text = text.replace("doesn't", "not")
+    text = text.replace("is not", "not")
+    text=text.replace("did not like", "not")
+    text=text.replace("didn't like", "not")
+
+    
+
+
     # Handle negation phrases to match your Colab logic
     text = text.replace("not good", "not_good")
     text = text.replace("not bad", "not_bad")
     text = text.replace("not working", "not_working")
     text = text.replace("not worth", "not_worth")
+    text = text.replace("not satisfy", "not_satisfy")
     
     # Keep underscores, remove other punctuation
     text = re.sub('[^a-zA-Z_]', ' ', text)
