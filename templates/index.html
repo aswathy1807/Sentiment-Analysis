@@ -3,42 +3,372 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Amazon Alexa Sentiment Analysis</title>
+    <title>Alexa Sentiment Analysis</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f4f7f6; margin: 0; }
-        .container { background: white; padding: 2rem; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 400px; text-align: center; }
-        textarea { width: 100%; height: 100px; padding: 10px; border-radius: 5px; border: 1px solid #ddd; resize: none; box-sizing: border-box; }
-        button { margin-top: 1rem; padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; transition: background 0.3s; }
-        button:hover { background-color: #0056b3; }
-        #result { margin-top: 1.5rem; font-weight: bold; font-size: 1.2rem; }
-        .positive { color: #28a745; }
-        .negative { color: #dc3545; }
+        :root {
+            --bg: #0d0d0f;
+            --surface: #17171a;
+            --border: rgba(255,255,255,0.07);
+            --text: #f0ede8;
+            --muted: #6b6b78;
+            --accent: #e8d5b0;
+            --positive: #6fcf97;
+            --negative: #eb5757;
+            --glow-pos: rgba(111, 207, 151, 0.15);
+            --glow-neg: rgba(235, 87, 87, 0.15);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        /* Atmospheric background */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 60% 50% at 20% 20%, rgba(232, 213, 176, 0.04) 0%, transparent 60%),
+                radial-gradient(ellipse 50% 60% at 80% 80%, rgba(111, 207, 151, 0.04) 0%, transparent 60%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Subtle grain overlay */
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+            opacity: 0.4;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .wrapper {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 520px;
+            padding: 2rem;
+            animation: fadeUp 0.6s ease both;
+        }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(24px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Header */
+        .header {
+            margin-bottom: 2.5rem;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--accent);
+            background: rgba(232, 213, 176, 0.08);
+            border: 1px solid rgba(232, 213, 176, 0.15);
+            padding: 5px 12px;
+            border-radius: 100px;
+            margin-bottom: 1.2rem;
+        }
+
+        .badge::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+            animation: pulse 2s ease infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+
+        h1 {
+            font-family: 'DM Serif Display', serif;
+            font-size: 2.6rem;
+            line-height: 1.1;
+            letter-spacing: -0.02em;
+            color: var(--text);
+        }
+
+        h1 em {
+            font-style: italic;
+            color: var(--accent);
+        }
+
+        .subtitle {
+            margin-top: 0.8rem;
+            font-size: 0.9rem;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        /* Card */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.8rem;
+            position: relative;
+            overflow: hidden;
+            transition: border-color 0.4s ease, box-shadow 0.4s ease;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            background: var(--card-glow, transparent);
+            transition: background 0.5s ease;
+            pointer-events: none;
+        }
+
+        .card.positive-glow {
+            --card-glow: radial-gradient(ellipse 80% 60% at 50% 110%, var(--glow-pos), transparent);
+            border-color: rgba(111, 207, 151, 0.2);
+        }
+
+        .card.negative-glow {
+            --card-glow: radial-gradient(ellipse 80% 60% at 50% 110%, var(--glow-neg), transparent);
+            border-color: rgba(235, 87, 87, 0.2);
+        }
+
+        /* Label */
+        .field-label {
+            font-size: 0.72rem;
+            font-weight: 500;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 0.6rem;
+        }
+
+        /* Textarea */
+        .textarea-wrap {
+            position: relative;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 130px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px 16px;
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.9rem;
+            line-height: 1.65;
+            resize: vertical;
+            outline: none;
+            transition: border-color 0.25s ease, background 0.25s ease;
+        }
+
+        textarea::placeholder { color: var(--muted); }
+
+        textarea:focus {
+            border-color: rgba(232, 213, 176, 0.3);
+            background: rgba(255,255,255,0.05);
+        }
+
+        .char-count {
+            position: absolute;
+            bottom: 10px;
+            right: 12px;
+            font-size: 0.7rem;
+            color: var(--muted);
+            pointer-events: none;
+        }
+
+        /* Button */
+        button {
+            margin-top: 1rem;
+            width: 100%;
+            padding: 14px 24px;
+            background: var(--accent);
+            color: #0d0d0f;
+            border: none;
+            border-radius: 10px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.88rem;
+            font-weight: 500;
+            letter-spacing: 0.04em;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: opacity 0.2s ease, transform 0.15s ease;
+        }
+
+        button:hover { opacity: 0.9; transform: translateY(-1px); }
+        button:active { transform: translateY(0); opacity: 0.8; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        .btn-icon {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+        }
+
+        /* Spinner */
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(13,13,15,0.3);
+            border-top-color: #0d0d0f;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            display: none;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Result */
+        #result {
+            margin-top: 1.4rem;
+            padding: 0;
+            height: 0;
+            overflow: hidden;
+            transition: height 0.4s ease;
+        }
+
+        #result.visible {
+            height: auto;
+        }
+
+        .result-inner {
+            border-top: 1px solid var(--border);
+            padding-top: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: fadeIn 0.4s ease both;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .result-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+
+        .result-icon.positive { background: rgba(111, 207, 151, 0.12); }
+        .result-icon.negative { background: rgba(235, 87, 87, 0.12); }
+        .result-icon.error    { background: rgba(255,255,255,0.06); }
+
+        .result-text {}
+        .result-label {
+            font-size: 0.68rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 2px;
+        }
+
+        .result-value {
+            font-family: 'DM Serif Display', serif;
+            font-size: 1.3rem;
+        }
+
+        .result-value.positive { color: var(--positive); }
+        .result-value.negative { color: var(--negative); }
+        .result-value.error    { color: var(--muted); }
+
+        /* Footer */
+        .footer {
+            margin-top: 1.8rem;
+            text-align: center;
+            font-size: 0.72rem;
+            color: var(--muted);
+        }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>Alexa Sentiment Analysis</h2>
-    <p>Enter a review below to test the model:</p>
-    <textarea id="reviewInput" placeholder="Type your review here..."></textarea>
-    <br>
-    <button onclick="getPrediction()">Predict Sentiment</button>
-    
-    <div id="result"></div>
+<div class="wrapper">
+    <div class="header">
+        <div class="badge">Sentiment Engine</div>
+        <h1>Alexa Review<br><em>Analysis</em></h1>
+        <p class="subtitle">Paste any product review and the model will predict its emotional tone instantly.</p>
+    </div>
+
+    <div class="card" id="card">
+        <div class="field-label">Your Review</div>
+        <div class="textarea-wrap">
+            <textarea id="reviewInput" placeholder="e.g. "This device completely changed how I manage my home…"" maxlength="1000" oninput="updateChar(this)"></textarea>
+            <span class="char-count" id="charCount">0 / 1000</span>
+        </div>
+
+        <button onclick="getPrediction()" id="btn">
+            <svg class="btn-icon" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M8 1.5L14 8L8 14.5M2 8H14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span id="btnText">Analyse Sentiment</span>
+            <div class="spinner" id="spinner"></div>
+        </button>
+
+        <div id="result"></div>
+    </div>
+
+    <p class="footer">Powered by a fine-tuned text classification model · Amazon Alexa Reviews dataset</p>
 </div>
 
 <script>
+    function updateChar(el) {
+        document.getElementById('charCount').textContent = el.value.length + ' / 1000';
+    }
+
     async function getPrediction() {
         const resultDiv = document.getElementById("result");
+        const card = document.getElementById("card");
+        const btn = document.getElementById("btn");
+        const spinner = document.getElementById("spinner");
+        const btnText = document.getElementById("btnText");
         const textInput = document.getElementById("reviewInput").value;
-        
+
         if (!textInput.trim()) {
-            resultDiv.innerText = "Please enter some text first!";
+            showResult('error', '⚠️', 'Empty Input', 'Please enter a review first.');
             return;
         }
 
-        resultDiv.innerText = "Analyzing...";
-        resultDiv.className = "";
+        // Loading state
+        btn.disabled = true;
+        spinner.style.display = 'block';
+        btnText.textContent = 'Analysing…';
+        resultDiv.classList.remove('visible');
+        card.className = 'card';
 
         try {
             const response = await fetch("/predict", {
@@ -46,21 +376,46 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ text: textInput })
             });
-            
+
             const data = await response.json();
-            
+
             if (data.prediction) {
-                resultDiv.innerText = "Prediction: " + data.prediction;
-                // Add color based on result
-                resultDiv.className = data.prediction.toLowerCase();
+                const isPositive = data.prediction.toLowerCase() === 'positive';
+                const sentiment = isPositive ? 'positive' : 'negative';
+                const emoji = isPositive ? '😊' : '😞';
+                showResult(sentiment, emoji, 'Detected Sentiment', data.prediction);
+                card.className = `card ${sentiment}-glow`;
             } else {
-                resultDiv.innerText = "Error: " + (data.error || "Unknown error");
+                showResult('error', '❌', 'Error', data.error || 'Unknown error');
             }
         } catch (error) {
-            resultDiv.innerText = "Error connecting to server.";
+            showResult('error', '⚡', 'Connection Error', 'Could not reach the server.');
             console.error(error);
+        } finally {
+            btn.disabled = false;
+            spinner.style.display = 'none';
+            btnText.textContent = 'Analyse Sentiment';
         }
     }
+
+    function showResult(type, emoji, label, value) {
+        const resultDiv = document.getElementById("result");
+        resultDiv.innerHTML = `
+            <div class="result-inner">
+                <div class="result-icon ${type}">${emoji}</div>
+                <div class="result-text">
+                    <div class="result-label">${label}</div>
+                    <div class="result-value ${type}">${value}</div>
+                </div>
+            </div>
+        `;
+        resultDiv.classList.add('visible');
+    }
+
+    // Allow Ctrl+Enter to submit
+    document.getElementById('reviewInput').addEventListener('keydown', e => {
+        if (e.key === 'Enter' && e.ctrlKey) getPrediction();
+    });
 </script>
 
 </body>
