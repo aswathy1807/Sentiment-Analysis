@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amazon Alexa Sentiment Analysis</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f4f7f6; margin: 0; }
+        .container { background: white; padding: 2rem; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 400px; text-align: center; }
+        textarea { width: 100%; height: 100px; padding: 10px; border-radius: 5px; border: 1px solid #ddd; resize: none; box-sizing: border-box; }
+        button { margin-top: 1rem; padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; transition: background 0.3s; }
+        button:hover { background-color: #0056b3; }
+        #result { margin-top: 1.5rem; font-weight: bold; font-size: 1.2rem; }
+        .positive { color: #28a745; }
+        .negative { color: #dc3545; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Alexa Sentiment Analysis</h2>
+    <p>Enter a review below to test the model:</p>
+    <textarea id="reviewInput" placeholder="Type your review here..."></textarea>
+    <br>
+    <button onclick="getPrediction()">Predict Sentiment</button>
+    
+    <div id="result"></div>
+</div>
+
+<script>
+    async function getPrediction() {
+        const resultDiv = document.getElementById("result");
+        const textInput = document.getElementById("reviewInput").value;
+        
+        if (!textInput.trim()) {
+            resultDiv.innerText = "Please enter some text first!";
+            return;
+        }
+
+        resultDiv.innerText = "Analyzing...";
+        resultDiv.className = "";
+
+        try {
+            const response = await fetch("/predict", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text: textInput })
+            });
+            
+            const data = await response.json();
+            
+            if (data.prediction) {
+                resultDiv.innerText = "Prediction: " + data.prediction;
+                // Add color based on result
+                resultDiv.className = data.prediction.toLowerCase();
+            } else {
+                resultDiv.innerText = "Error: " + (data.error || "Unknown error");
+            }
+        } catch (error) {
+            resultDiv.innerText = "Error connecting to server.";
+            console.error(error);
+        }
+    }
+</script>
+
+</body>
+</html>
