@@ -40,3 +40,8 @@ The app will open in your browser.
 
 # Screenshots 
 
+![Sentiment-Analysisl](imgs/positive.png)
+![Sentiment-Analysisl](imgs/negative.png)
+![Sentiment-Analysisl](imgs/noinput.png)
+
+
